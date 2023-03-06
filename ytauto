@@ -1,0 +1,85 @@
+1. Finding Content
+I can use r/TikTokCringe to download 12 most upvotes tik tok video of that particular day. I can use youtube-dl to download these videos. It's pretty easy because in reddit if you add .json in the end of url you will get json output something like this.
+So by using curl only this line is enough to download funny tiktok video -
+
+#original command
+#youtube-dl $(curl -s -H "User-agent: 'your bot 0.1'" https://www.reddit.com/r/TikTokCringe/hot.json?limit=12 | jq '.' | grep url_overridden_by_dest | grep -Eoh "https:\/\/v\.redd\.it\/\w{13}") 
+
+#improve command
+Slight improvement for your first line, the two grep commands aren't needed as jq can extract the urls by itself:
+
+#youtube-dl $(curl -s -H "User-agent: 'your bot 0.1'" https://www.reddit.com/r/TikTokCringe/hot.json?limit=12 | jq -r '.data.children[].data.url_overridden_by_dest // empty')
+-r makes the output raw, so without the quotes.
+
+[] leaving out the index on the array makes jq output all children.
+
+// empty converts any null output to empty strings so they don't get passed to youtube-dl and confuse it.
+
+
+2. Editing video
+Now these tik tok videos are vertical videos so First thing I have to do is adding the blur background in vertical video, to make it horizontal video. So I can use ffmpeg to add blur background. After looking online a little I found a weird command to do this trick and now I can run this command to all files using a for loop -
+
+
+#original command
+#for f in .mp4; do ffmpeg -i $f -lavfi '[0:v]scale=ih16/9:-1,boxblur=luma_radius=min(h,w)/20:luma_power=1:chroma_radius=min(cw,ch)/20:chroma_power=1[bg];[bg][0:v]overlay=(W-w)/2:(H-h)/2,crop=h=iw*9/16' -vb 800K blur/$f ; done
+
+
+Now in last I have to merge the videos to finish my editing. I can also download a subscription request video from youtube to just add it in the end and then use ffmpeg concat function to merge all videos and making one compilation video.
+
+#for f in blur/*.mp4; do echo "file $f" >> file_list.txt ; done  
+ffmpeg -f concat -i file_list.txt final.mp4 
+Don't forget to delete vertical and horizontal videos after making a final.mp4 file.
+
+#modifications
+I recently learned you can provide ffmpeg with a .m3u8 link and it will download all the .ts files for a video and merge them into a single video with your format of choice.
+
+Many video streaming sites just play a playlist of hundreds of .ts files to be able to adjust the video quality of the video you're watching on the fly. But they usually have more than one playlist based on connection quality. You can get this playlist by monitoring the network communications in Chrome's developer tools. So easy:
+
+ffmpeg -i https://www.somesite.com/a-video-hd.m3u8 -map 0 -c copy my_downloaded_video.mp4
+
+And voila, you have ripped a stream from a website in full HD quality.
+
+FFmpeg never ceases to amaze me.
+
+
+3. Uploading Video
+Now this is very simple google have an article (https://developers.google.com/youtube/v3/guides/uploading_a_video). Explaining how you can upload a youtube video by using python. You can read this article. It's provide a python2 script which require your google account outh2 authorization keys and then you can run this script in last.
+
+#original command
+#python2 $HOME/bw/.local/bin/upload.py --file="final.mp4" --title="Funny TikTok Compilation" --description="Buy my merchandise - spamlink.ly" --keywords="tiktok,cringe" --category="22" --privacyStatus="public"
+
+This one simple script will run as cronjob daily and upload funny tik tok videos in 24 hours. Also these are most up voted tik tok on r/TikTokCringe So your video are pretty much high quality tik toks. So you will get good retention on your video. Also by running multiple channels like this you have a good chance of getting subscribers and you can find a way to monetize your channel and earn some Money.
+
+I am very sure your videos will also get picked by stupid youtube algorithm.
+
+BTW I am not going to do this thing by myself. Because I don't support putting someone else video and earning from it. I have my own youtube channel where I put original content. But since this is good idea I just wanted it to share with you.
+
+
+
+#!/bin/bash
+#
+# Downloads ten videos from /r/TikTokCringe, concatenates every video file with blur box effect
+# using h264_nvenc nvidia encoder
+# If you don't have a custom compiled version with nvenc enabled, I would recommend swapping out -c:v h264_nvenc with -c:v libx264. This specifies the x264 codec and will use your CPU for encoding.
+
+date=$(date +%Y-%m-%d_%H:%M:%S)
+
+mkdir -p blur rendered
+
+# parallel download videos from /r/TikTokCringe
+curl -s -H "User-agent: 'Somebody 0.2'" https://www.reddit.com/r/TikTokCringe/hot.json?limit=10 | jq -r '.data.children[].data.url_overridden_by_dest // empty' \
+  | xargs -I '{}' -P 5-_ youtube-dl '{}'
+
+# add blur box, aspect ratio 16/9
+for f in *.mp4; do 
+  ffmpeg -n -hide_banner -i $f \
+  -vf 'split[original][copy];[copy]scale=ih*16/9:-1,crop=h=iw*9/16,gblur=sigma=20[blurred];[blurred][original]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2' \
+  -c:v h264_nvenc -r 30 -preset fast blur/$f;
+done
+
+# Final render
+printf "file '%s'\n" blur/*.mp4 > file_list.txt
+ffmpeg -f concat -i file_list.txt -c:v h264_nvenc -r 30 -preset fast rendered/$date.m4v
+
+# cleanup
+rm -f *.mp4 blur/*.mp4

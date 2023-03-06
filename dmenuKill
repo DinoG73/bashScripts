@@ -1,0 +1,10 @@
+##este es un script que lista los procesos del usuario, permite seleccionarlo y este guarda el numero de proceso en una variable llamada $pid para luego terminarlo rapidamente con el comando kill -15[SINGTERM] 
+##calculo que tengo que linkear este script con alguna tecla para ejecutarlo, no me queda claro todavia
+
+##investigar comandos ps, que significa %mem
+##sed sort dmenu awk
+
+pid=$(ps -u $USER -o pid,%mem,%cpu,comm | sed -n '1!p' | sort -b -k2 -r | dmenu -i -l 15 | awk '{print $1}')
+kill -15 $pid 2>/dev/null
+#notify-send "u kill process, u monster" # deberia instalar primero notify-send
+
