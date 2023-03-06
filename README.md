@@ -1,0 +1,2 @@
+# bashScripts
+some beginer scripts 
