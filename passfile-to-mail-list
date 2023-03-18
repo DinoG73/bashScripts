@@ -1,0 +1,20 @@
+
+  #! /bin/sh
+# passfile-to-mail-list
+#
+# Generate a mailing list of all users of a particual shell.
+#
+# Usage:
+#   passfile-to-mail-list < /etc/passwd or file
+#   ypcat passwd | passfile-to-mail-list
+#   niscat passwd.org_dir | passfile-to-mail-list
+# Possibly a bit of overkill:
+rm -f /tmp/*.mail-list
+# Read from standard input
+while IFS=: read user passwd name home shell
+do
+    shell=${shell:-/bin/sh} # Empty shell field means /bin/sh
+    file="/tmp/$(echo $shell | sed -e 's;^/;;' -e 's;/;-;g').mail-list"
+    echo $user, >> $file
+done
+# No me funciona muy bien
