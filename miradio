@@ -1,0 +1,6 @@
+# 	Plan de script para seleccionar mis radios
+#	la selecion queda con unas comillas que evita que se reproduzca el archivo
+#	
+#	refinar el archivo radios.txt con el mismo comando hasta grep. Generar nuevo archivo con streams de radios
+
+cat radios.txt | grep -Eo "http(s|)://.*(mp3|stream)\b" | fzf | xclip -selection c
